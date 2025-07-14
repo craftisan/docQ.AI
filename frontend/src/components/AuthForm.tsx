@@ -6,22 +6,26 @@ import { useAuth } from "@/context/AuthContext";
 import { login as apiLogin, register as apiRegister } from "@/lib/api";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AuthFormData, authSchema } from "@/lib/validation";
+import { LoginFormData, loginSchema, RegisterFormData, registerSchema, } from "@/lib/validation";
 
 export default function AuthForm({mode}: { mode: "register" | "login" }) {
   const router = useRouter();
   const {setToken} = useAuth();
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // Pick the correct schema and types
+  const schema = mode === "register" ? registerSchema : loginSchema;
+  type FormData = RegisterFormData | LoginFormData;
+
   const {
     register,
     handleSubmit,
     formState: {errors, isSubmitting},
-  } = useForm<AuthFormData>({
-    resolver: zodResolver(authSchema),
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
   });
 
-  async function onSubmit(data: AuthFormData) {
+  async function onSubmit(data: FormData) {
     setApiError(null);
     try {
       const res = mode === "login"
@@ -45,7 +49,7 @@ export default function AuthForm({mode}: { mode: "register" | "login" }) {
       onSubmit={handleSubmit(onSubmit)}
       className="max-w-sm mx-auto space-y-4 mt-10 border p-4 rounded shadow"
     >
-      <h2 className="text-xl font-bold">
+      <h2 className="text-xl font-bold mb-2">
         {mode === "login" ? "Login" : "Register"}
       </h2>
 
@@ -69,14 +73,18 @@ export default function AuthForm({mode}: { mode: "register" | "login" }) {
         <p className="text-red-500 text-sm">{errors.password.message}</p>
       )}
 
-      {apiError && <p className="text-red-600">{apiError}</p>}
+      {apiError && <p className="text-red-600 text-sm">{apiError}</p>}
 
       <button
         type="submit"
         disabled={isSubmitting}
         className="bg-blue-500 text-white px-4 py-2 rounded w-full"
       >
-        {isSubmitting ? "Please wait..." : mode === "login" ? "Login" : "Register"}
+        {isSubmitting
+          ? "Please wait..."
+          : mode === "login"
+            ? "Login"
+            : "Register"}
       </button>
     </form>
   );
