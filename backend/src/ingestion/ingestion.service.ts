@@ -22,13 +22,14 @@ export class IngestionService {
   }
 
   async trigger(dto: CreateIngestionDto): Promise<IngestionJob> {
+    // First create a job with given documents and status as pending
     const job = this.repo.create({
       documentIds: dto.documentIds,
       status: 'pending',
     });
     await this.repo.save(job);
 
-    // fire & forget
+    // Fire the job to process the ingestion of documents with RAG-backend APIs
     this.process(job.id).catch((err) => {
       this.logger.error(`Job ${job.id} failed`, err);
     });
@@ -37,14 +38,21 @@ export class IngestionService {
   }
 
   private async process(jobId: string) {
+    // Update the job status to running
     await this.repo.update(jobId, { status: 'running' });
+    // Get the job object from DB
     const job = await this.repo.findOneBy({ id: jobId });
-    if (!job) throw new Error(`Job ${jobId} not found`);
+    if (!job) {
+      throw new Error(`Job ${jobId} not found`);
+    }
 
     try {
+      // Call RAG-backend ingest API
       await firstValueFrom(this.http.post(`${this.ragUrl}/ingest`, { document_ids: job.documentIds }));
+      // If the ingestion is successful, mark the job as done
       await this.repo.update(jobId, { status: 'done' });
     } catch (err) {
+      // If there is any error during ingestion, mark the job as failed
       this.logger.error(`Error in job ${jobId}`, err);
       await this.repo.update(jobId, { status: 'failed' });
     }
