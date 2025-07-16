@@ -2,6 +2,7 @@ import { Body, Controller, InternalServerErrorException, Post } from '@nestjs/co
 import { AuthService } from '@/auth/auth.service';
 import { UsersService } from '@/users/users.service';
 import * as bcrypt from 'bcrypt';
+import { Public } from '@/auth/public.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -11,6 +12,7 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @Public()
   async register(@Body() body: { email: string; password: string; role?: string }) {
     // Encrypt the password
     const hashed = await bcrypt.hash(body.password, 10);
@@ -29,6 +31,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Public()
   async login(@Body() body: { email: string; password: string }) {
     // Validate user with email & password
     const user = await this.authService.validateUser(body.email, body.password);
