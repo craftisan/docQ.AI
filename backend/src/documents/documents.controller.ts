@@ -1,16 +1,13 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  UseGuards,
-  Request,
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { DocumentsService } from './documents.service';
-import { AuthGuard } from '@nestjs/passport';
+import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
+import { RolesGuard } from '@/auth/roles.guard';
+import { Roles } from '@/auth/roles.decorator';
+import { Role } from '@/users/dto/update-user-role.dto';
 
 @Controller('documents')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.Admin, Role.Editor, Role.Viewer)
 export class DocumentsController {
   constructor(private docsService: DocumentsService) {}
 
