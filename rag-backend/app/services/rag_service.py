@@ -4,13 +4,12 @@ from chromadb.config import Settings
 from langchain.chains import RetrievalQA
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
-from langchain_openai import ChatOpenAI
-from langchain_community.chat_models import ChatOllama
 
 from app.models.request_models import IngestRequest, QARequest
 from app.models.response_models import IngestResponse, QAResponse
 
 USE_LOCAL_EMBEDDINGS = os.getenv("USE_LOCAL_EMBEDDINGS", "false").lower() == "true"
+EMBEDDING_MODEL = os.getenv("HUGGINGFACE_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 
 # -------------------------
 # Embedding model selection
@@ -18,7 +17,7 @@ USE_LOCAL_EMBEDDINGS = os.getenv("USE_LOCAL_EMBEDDINGS", "false").lower() == "tr
 if USE_LOCAL_EMBEDDINGS:
     from langchain_huggingface import HuggingFaceEmbeddings
 
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
 else:
     from langchain_openai import OpenAIEmbeddings
 
@@ -30,16 +29,23 @@ else:
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 100
 
+
 # -------------------------
 # Vector Store
 # -------------------------
 
 def get_vectorstore():
+    # Uncomment to connect to a remote chromadb server, https://docs.trychroma.com/reference/python/client#httpclient
+    # To run that server - https://docs.trychroma.com/docs/cli/run#running-a-chroma-server
+    # client = chromadb.HttpClient(host="localhost", port=8001, ssl=False)
     return Chroma(
         collection_name="documents",
         embedding_function=embeddings,
-        client_settings=Settings()
+        client_settings=Settings(),
+        # client=client, # For remote chromadb instance
+        persist_directory="./chroma"
     )
+
 
 # -------------------------
 # Ingestion API
@@ -61,8 +67,9 @@ async def ingest_document(request: IngestRequest) -> IngestResponse:
 
     return IngestResponse(
         status=True,
-        message=f"Document '{request.document_name}' ingested successfully with {len(chunks)} chunks."
+        message=f"Document '{request.document_name}' ingested successfully."
     )
+
 
 # -------------------------
 # QA API
