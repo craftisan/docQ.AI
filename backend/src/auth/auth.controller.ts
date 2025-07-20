@@ -1,10 +1,10 @@
-import { Body, Controller, InternalServerErrorException, Post } from '@nestjs/common';
+import { Body, ClassSerializerInterceptor, Controller, InternalServerErrorException, Post, UseInterceptors } from '@nestjs/common';
 import { AuthService } from '@/auth/auth.service';
 import { UsersService } from '@/users/users.service';
-import * as bcrypt from 'bcrypt';
-import { Public } from '@/auth/public.decorator';
+import { Public } from '@/auth/decorators/public.decorator';
 
 @Controller('auth')
+@UseInterceptors(ClassSerializerInterceptor)
 export class AuthController {
   constructor(
     private authService: AuthService,
@@ -13,21 +13,22 @@ export class AuthController {
 
   @Post('register')
   @Public()
-  async register(@Body() body: { email: string; password: string; role?: string }) {
-    // Encrypt the password
-    const hashed = await bcrypt.hash(body.password, 10);
+  async register(@Body() body: { name: string; email: string; password: string; role?: string }) {
     // Attempt to create user
     const user = await this.usersService.create({
+      name: body.name,
       email: body.email,
-      password: hashed,
-      role: body.role || 'viewer',
+      password: body.password,
+      role: body.role ?? 'viewer',
     });
 
     if (!user) {
       throw new InternalServerErrorException('Could not register user. Please try again.');
     }
 
-    return user;
+    const { access_token } = this.authService.login(user);
+
+    return { access_token, user };
   }
 
   @Post('login')
