@@ -17,7 +17,12 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "db:drop": "ts-node -r tsconfig-paths/register ./node_modules/.bin/typeorm schema:drop --dataSource src/data-source.ts",
+    "db:sync": "ts-node -r tsconfig-paths/register ./node_modules/.bin/typeorm schema:sync --dataSource src/data-source.ts",
+    "db:migration:create": "ts-node -r tsconfig-paths/register ./node_modules/.bin/typeorm migration:create ./database/migrations/InitSchema",
+    "db:migration:generate": "ts-node -r tsconfig-paths/register ./node_modules/.bin/typeorm migration:generate ./database/migrations/InitSchema --dataSource src/data-source.ts",
+    "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/.bin/typeorm"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
@@ -64,6 +69,7 @@
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
+    "typeorm-ts-node-commonjs": "^0.3.20",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
   },
