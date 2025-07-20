@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { listDocuments } from "@/lib/api";
-import { Document } from "@/types/Document";
+import { Doc } from "@/types/document/Doc";
 
 export default function DocumentList({ token }: { token: string }) {
-  const [docs, setDocs] = useState<Document[]>([]);
+  const [docs, setDocs] = useState<Doc[]>([]);
 
   useEffect(() => {
     (async () => {
