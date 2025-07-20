@@ -1,9 +1,12 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Post, UseGuards } from '@nestjs/common';
 import { DocumentsService } from './documents.service';
 import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 import { RolesGuard } from '@/auth/roles.guard';
-import { Roles } from '@/auth/roles.decorator';
+import { Roles } from '@/auth/decorators/roles.decorator';
 import { Role } from '@/users/dto/update-user-role.dto';
+import { Document } from '@/documents/document.entity';
+import { CreateDocumentDto } from '@/documents/dto/create-document.dto';
+import { GetUser } from '@/auth/decorators/get-user.decorator';
 
 @Controller('documents')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -11,13 +14,23 @@ import { Role } from '@/users/dto/update-user-role.dto';
 export class DocumentsController {
   constructor(private docsService: DocumentsService) {}
 
-  @Post('upload')
-  async upload(@Body() body: { name: string; content: string }) {
-    return this.docsService.create(body);
+  @Get()
+  async list(@GetUser('id') userId: string) {
+    return this.docsService.findAllByUser(userId);
   }
 
-  @Get()
-  async list() {
-    return this.docsService.findAll();
+  @Get(':id')
+  async find(@Param('id') id: string, @GetUser('id') userId: string): Promise<Document> {
+    const document = await this.docsService.findByIdAndUser(id, userId);
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+    return document;
+  }
+
+  @Post('upload')
+  async upload(@Body() dto: CreateDocumentDto, @GetUser('id') userId: string) {
+    return this.docsService.create(dto, userId);
   }
 }
