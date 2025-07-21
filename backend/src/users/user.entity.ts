@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { Document } from '@/documents/document.entity';
 
@@ -26,6 +26,8 @@ export class User {
   @UpdateDateColumn({ type: 'timestamp with time zone' })
   updatedAt: Date;
 
-  @OneToMany(() => Document, (doc) => doc.user)
+  @OneToMany(() => Document, (doc) => doc.user, {
+    eager: true,
+  })
   documents: Document[];
 }
