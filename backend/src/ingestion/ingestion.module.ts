@@ -5,10 +5,11 @@ import { IngestionService } from '@/ingestion/ingestion.service';
 import { IngestionController } from '@/ingestion/ingestion.controller';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { Document } from '@/documents/document.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([IngestionJob]),
+    TypeOrmModule.forFeature([IngestionJob, Document]),
     HttpModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (cs: ConfigService) => ({
