@@ -25,7 +25,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
 
   return (
     <html lang="en">
-      <body className={clsx(
+      <body suppressHydrationWarning className={clsx(
         geistSans.variable, geistMono.variable, "antialiased h-screen w-screen",
         {
           "bg-white": isAuthPage,
