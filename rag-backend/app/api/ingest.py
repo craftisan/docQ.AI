@@ -24,7 +24,7 @@ async def ingest_endpoint(background_tasks: BackgroundTasks, request: IngestRequ
             background_tasks.add_task(ingest_document, request)
             return IngestResponse(
                 status=True,
-                message=f"Document '{request.document_name}' ingested successfully",
+                message=f"Document '{request.document_name}' queued for ingestion successfully",
             )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
