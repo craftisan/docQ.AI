@@ -4,26 +4,23 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth/AuthContext";
-import { listDocuments, getIngestionStatus } from "@/lib/api";
+import { listDocuments } from "@/lib/api";
 import DocumentCard from "@/components/document/DocumentCard";
 import UploadButton from "@/components/document/UploadButton";
-import { Doc } from "@/types/document/Doc";
-import { IngestionJob } from "@/types/ingestion/IngestionJob";
+import { Doc, getLatestIngestionJob } from "@/types/document/Doc";
 
 export default function DashboardPage() {
   const { token, loading } = useAuth();
   const router = useRouter();
   const [docs, setDocs] = useState<Doc[]>([]);
-  const [jobs, setJobs] = useState<IngestionJob[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
     if (!loading) {
       if (!token) return router.push("/");
-      Promise.all([listDocuments(token), getIngestionStatus(token)])
-        .then(([docsRes, jobsRes]) => {
+      Promise.all([listDocuments(token)])
+        .then(([docsRes]) => {
           setDocs(docsRes);
-          setJobs(jobsRes);
         })
         .finally(() => setLoadingData(false));
     }
@@ -36,8 +33,7 @@ export default function DashboardPage() {
     .slice(0, 5)
     .map((doc) => ({
       ...doc,
-      status:
-        jobs.find((job) => job.documentIds.includes(doc.id))?.status || "pending",
+      status: getLatestIngestionJob(doc)?.status || "pending"
     }));
 
   return (
@@ -54,7 +50,7 @@ export default function DashboardPage() {
           />
         ))}
       </div>
-      <UploadButton />
+      <UploadButton/>
     </div>
   );
 }

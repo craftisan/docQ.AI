@@ -1,6 +1,8 @@
 import axios from "axios";
 import { Doc } from "@/types/document/Doc";
 import { User } from "@/types/auth/User";
+import { IngestionJob } from "@/types/ingestion/IngestionJob";
+import { QAResponse } from "@/types/document/QAResponse";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9001/api/";
 export const RAG_API_URL = process.env.NEXT_PUBLIC_RAG_API_URL || "http://localhost:8000/";
@@ -38,10 +40,35 @@ export async function getDocument(id: string, token: string): Promise<Doc> {
   return res.data;
 }
 
-export async function uploadDocument(name: string, content: string, token: string) {
+export async function uploadDocument(file: File, token: string): Promise<Doc> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await client.post(
+    "documents/upload",
+    formData,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      }
+    }
+  );
+  return res.data;
+}
+
+export async function createDocument(name: string, content: string, token: string): Promise<Doc> {
   const res = await client.post(
     "documents/upload",
     { name, content },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data;
+}
+
+export async function deleteDocument(id: string, token: string): Promise<boolean> {
+  const res = await client.delete(
+    `documents/${id}`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return res.data;
@@ -65,28 +92,29 @@ export async function updateUserRole(userId: string, role: string, token: string
 }
 
 // Ingestion management
-export async function getIngestionStatus(token: string) {
-  const res = await client.get("ingestion/status", {
+export async function getIngestionStatus(token: string): Promise<IngestionJob[]> {
+  const res = await client.get<IngestionJob[]>("ingestion/status", {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.data;
 }
 
-export async function triggerIngestion(token: string) {
-  const res = await ragClient.post(
-    "ingest",
-    {},
+export async function triggerIngestion(doc: Doc, token: string): Promise<IngestionJob> {
+  const res = await client.post<IngestionJob>(
+    "ingestion/trigger",
+    {
+      "documentIds": [doc.id],
+    },
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return res.data;
 }
 
 // Q&A
-export async function askQuestion(question: string, token: string) {
-  const res = await ragClient.post(
-    "qa",
-    { question },
-    { headers: { Authorization: `Bearer ${token}` } }
+export async function askQuestion(document_uuid: string, question: string): Promise<QAResponse> {
+  const res = await ragClient.post<QAResponse>(
+    "qa/",
+    { document_uuid, question },
   );
   return res.data;
 }

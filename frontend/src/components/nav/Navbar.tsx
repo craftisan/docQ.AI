@@ -13,7 +13,6 @@ export default function Navbar() {
       </div>
       <nav className="flex-1 *:p-2 *:hover:bg-gray-500 *:cursor-pointer *:rounded-md">
         <Link href="/dashboard" className="block">Dashboard</Link>
-        <Link href="/documents" className="block">Documents</Link>
         <Link href="/ingestion" className="block">Ingestion Status</Link>
         {user?.role === "admin" && (
           <Link href="/admin/users" className="block">Users</Link>
