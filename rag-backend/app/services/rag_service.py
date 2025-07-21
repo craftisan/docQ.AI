@@ -56,11 +56,12 @@ async def ingest_document(request: IngestRequest) -> IngestResponse:
     chunks = splitter.create_documents([request.document_content])
 
     if not chunks:
-        return IngestResponse(status=False, message="No chunks generated from document.")
+        return IngestResponse(status=False, message=f"Document '{request.document_name}' could not be processed.")
 
     # Add metadata
     for doc in chunks:
         doc.metadata["document_name"] = request.document_name
+        doc.metadata["uuid"] = request.document_uuid
 
     store = get_vectorstore()
     store.add_documents(chunks)
@@ -80,7 +81,7 @@ async def answer_question(request: QARequest) -> QAResponse:
 
     # Filter on document_name
     retriever = store.as_retriever(search_kwargs={
-        "filter": {"document_name": {"$eq": request.document_name}},
+        "filter": {"uuid": {"$eq": request.document_uuid}},
         "k": 5
     })
 
@@ -117,7 +118,10 @@ async def answer_question(request: QARequest) -> QAResponse:
 
     # Extract answer and sources
     answer = result.get('result', 'No answer found.')
-    sources = list({doc.metadata.get('source', 'N/A') for doc in result.get('source_documents', [])})
+    sources = list({
+        doc.metadata.get('source')
+        for doc in result.get('source_documents', [])
+        if doc.metadata.get('source')})
 
     return QAResponse(
         question=request.question,
