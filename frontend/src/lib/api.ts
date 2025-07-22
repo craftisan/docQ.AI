@@ -110,6 +110,15 @@ export async function triggerIngestion(doc: Doc, token: string): Promise<Ingesti
   return res.data;
 }
 
+export async function triggerBulkIngestion(documentIds: string[], token: string): Promise<IngestionJob> {
+  const { data } = await client.post<IngestionJob>(
+    "ingestion/trigger",
+    { documentIds },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return data;
+}
+
 // Q&A
 export async function askQuestion(document_uuid: string, question: string): Promise<QAResponse> {
   const res = await ragClient.post<QAResponse>(

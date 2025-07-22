@@ -47,8 +47,8 @@ export default function UsersPage() {
       <h1 className="text-2xl font-bold mb-4">User Management</h1>
       {error && <p className="text-red-500 mb-4">{error}</p>}
       <table className="w-full bg-white rounded-lg shadow-xl">
-        <thead className="rounded-lg rounded-t-xl">
-          <tr className="bg-blue-500 *:p-4 *:text-left text-white">
+        <thead className="rounded-lg bg-blue-500">
+          <tr className="*:p-4 *:text-left text-white">
             <th>Name</th>
             <th>Email</th>
             <th>Role</th>
