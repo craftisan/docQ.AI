@@ -4,12 +4,25 @@ import { IngestionJob } from "@/types/ingestion/IngestionJob";
 export interface Doc {
   id: string;
   name: string;
-  content: string;
   userId: string;
   createdAt: string;
   updatedAt: string;
   user: User;
   ingestionJobs: IngestionJob[];
+}
+
+export interface DocumentChunk {
+  id: string;
+  documentId: string;
+  chunkIndex: number;
+  text: string;
+}
+
+export interface ChunkPage {
+  chunks:   DocumentChunk[];
+  total:    number;
+  page:     number;
+  perPage:  number;
 }
 
 /**

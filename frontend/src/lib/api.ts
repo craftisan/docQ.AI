@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Doc } from "@/types/document/Doc";
+import { ChunkPage, Doc } from "@/types/document/Doc";
 import { User } from "@/types/auth/User";
 import { IngestionJob } from "@/types/ingestion/IngestionJob";
 import { QAResponse } from "@/types/document/QAResponse";
@@ -40,6 +40,22 @@ export async function getDocument(id: string, token: string): Promise<Doc> {
   return res.data;
 }
 
+export async function fetchDocumentChunks(
+  documentId: string,
+  page: number,
+  perPage: number,
+  token: string,
+): Promise<ChunkPage> {
+  const { data } = await client.get<ChunkPage>(
+    `documents/${documentId}/chunks`,
+    {
+      params: { page, perPage },
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+  return data;
+}
+
 export async function uploadDocument(file: File, token: string): Promise<Doc> {
   const formData = new FormData();
   formData.append('file', file);
@@ -53,15 +69,6 @@ export async function uploadDocument(file: File, token: string): Promise<Doc> {
         "Content-Type": "multipart/form-data",
       }
     }
-  );
-  return res.data;
-}
-
-export async function createDocument(name: string, content: string, token: string): Promise<Doc> {
-  const res = await client.post(
-    "documents/upload",
-    { name, content },
-    { headers: { Authorization: `Bearer ${token}` } }
   );
   return res.data;
 }
@@ -122,7 +129,7 @@ export async function triggerBulkIngestion(documentIds: string[], token: string)
 // Q&A
 export async function askQuestion(document_uuid: string, question: string): Promise<QAResponse> {
   const res = await ragClient.post<QAResponse>(
-    "qa/",
+    "qa",
     { document_uuid, question },
   );
   return res.data;
