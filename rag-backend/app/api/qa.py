@@ -5,7 +5,7 @@ from app.services.rag_service import answer_question
 
 router = APIRouter()
 
-@router.post("/", response_model=QAResponse)
+@router.post("", response_model=QAResponse)
 async def qa_endpoint(request: QARequest):
     try :
         return await answer_question(request)

@@ -4,8 +4,9 @@ from chromadb.config import Settings
 from langchain.chains import RetrievalQA
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
+from langchain_core.documents import Document
 
-from app.models.request_models import IngestRequest, QARequest
+from app.models.request_models import IngestRequest, QARequest, IngestChunksRequest
 from app.models.response_models import IngestResponse, QAResponse
 
 USE_LOCAL_EMBEDDINGS = os.getenv("USE_LOCAL_EMBEDDINGS", "false").lower() == "true"
@@ -69,6 +70,27 @@ async def ingest_document(request: IngestRequest) -> IngestResponse:
     return IngestResponse(
         status=True,
         message=f"Document '{request.document_name}' ingested successfully."
+    )
+
+async def ingest_document_chunks(request: IngestChunksRequest) -> IngestResponse:
+    # Build LangChain documents from your pre-chunked text:
+    docs = []
+    for chunk in request.chunks:
+        d = Document(
+            page_content=chunk,
+            metadata={
+                "document_name": request.document_name,
+                "uuid":          request.document_uuid,
+            },
+        )
+        docs.append(d)
+
+    store = get_vectorstore()
+    store.add_documents(docs)
+
+    return IngestResponse(
+        status=True,
+        message=f"Document '{request.document_name}' ingested ({len(docs)} chunks)."
     )
 
 
