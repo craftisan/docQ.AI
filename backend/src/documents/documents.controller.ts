@@ -44,7 +44,7 @@ export class DocumentsController {
           cb(new BadRequestException(`Unsupported file type ${file.mimetype}. Please upload a PDF, DOCX or TXT file.`), false);
         }
       },
-      limits: { fileSize: 10 * 1024 * 1024 }, // max 10MB
+      limits: { fileSize: parseInt(process.env.MAX_FILE_SIZE ?? '20') * 1024 * 1024 }, // 20MB max
     }),
   )
   async upload(@UploadedFile('file') file: Express.Multer.File, @GetUser('id') userId: string): Promise<Document> {

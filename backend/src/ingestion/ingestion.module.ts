@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { IngestionJob } from '@/ingestion/ingestion-job.entity';
 import { IngestionService } from '@/ingestion/ingestion.service';
@@ -6,6 +6,9 @@ import { IngestionController } from '@/ingestion/ingestion.controller';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Document } from '@/documents/document.entity';
+import { BullModule } from '@nestjs/bull';
+import { IngestionProcessor } from '@/ingestion/ingestion.processor';
+import { DocumentsModule } from '@/documents/documents.module';
 
 @Module({
   imports: [
@@ -18,8 +21,16 @@ import { Document } from '@/documents/document.entity';
       }),
       inject: [ConfigService],
     }),
+    BullModule.registerQueue({
+      name: 'ingestion',
+      redis: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT ?? '6379'),
+      },
+    }),
+    forwardRef(() => DocumentsModule),
   ],
-  providers: [IngestionService],
+  providers: [IngestionService, IngestionProcessor],
   controllers: [IngestionController],
   exports: [IngestionService],
 })

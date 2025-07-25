@@ -6,12 +6,15 @@ import { CreateDocumentDto } from '@/documents/dto/create-document.dto';
 import mammoth from 'mammoth';
 import pdf, { Result } from 'pdf-parse';
 import { IngestionService } from '@/ingestion/ingestion.service';
+import { DocumentChunk } from '@/documents/document-chunk.entity';
 
 @Injectable()
 export class DocumentsService {
   constructor(
     @InjectRepository(Document)
     private docsRepo: Repository<Document>,
+    @InjectRepository(DocumentChunk)
+    private readonly chunkRepo: Repository<DocumentChunk>,
     private ingestionService: IngestionService,
   ) {}
 
@@ -39,11 +42,25 @@ export class DocumentsService {
       throw new BadRequestException(`Unsupported file extension .${ext}`);
     }
 
-    // Save the Doc to DB
-    const doc = this.docsRepo.create({ name, content, userId });
+    // 1) Save document metadata
+    const doc = this.docsRepo.create({ name, userId });
     const savedDoc = await this.docsRepo.save(doc);
 
-    // Trigger ingestion job
+    // 2) split into chunks
+    const chunkSize = 1000; // adjust based on RAG model
+    const chunks: DocumentChunk[] = [];
+    for (let i = 0; i * chunkSize < content.length; i++) {
+      chunks.push(
+        this.chunkRepo.create({
+          documentId: savedDoc.id,
+          chunkIndex: i,
+          text: content.slice(i * chunkSize, (i + 1) * chunkSize),
+        }),
+      );
+    }
+    await this.chunkRepo.save(chunks);
+
+    // TODO: Trigger ingestion job
     await this.ingestionService.trigger({ documentIds: [savedDoc.id] });
 
     return (await this.findById(savedDoc.id))!;

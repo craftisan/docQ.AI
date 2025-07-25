@@ -1,6 +1,7 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToMany, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { User } from '@/users/user.entity';
 import { IngestionJob } from '@/ingestion/ingestion-job.entity';
+import { DocumentChunk } from '@/documents/document-chunk.entity';
 
 @Entity()
 export class Document {
@@ -10,11 +11,17 @@ export class Document {
   @Column()
   name: string;
 
-  @Column('text')
-  content: string;
+  // if we later want S3/URI storage:
+  @Column({ nullable: true })
+  storageUri?: string;
 
   @Column({ type: 'uuid' })
   userId: string;
+
+  @OneToMany(() => DocumentChunk, (chunk) => chunk.document, {
+    cascade: ['insert'],
+  })
+  chunks: DocumentChunk[];
 
   @CreateDateColumn({ type: 'timestamp with time zone' })
   createdAt: Date;
