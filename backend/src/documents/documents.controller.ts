@@ -1,11 +1,10 @@
-import { BadRequestException, Body, Controller, Delete, Get, NotFoundException, Param, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Controller, Delete, Get, NotFoundException, Param, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { DocumentsService } from './documents.service';
 import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 import { RolesGuard } from '@/auth/roles.guard';
 import { Roles } from '@/auth/decorators/roles.decorator';
 import { Role } from '@/users/dto/update-user-role.dto';
 import { Document } from '@/documents/document.entity';
-import { CreateDocumentDto } from '@/documents/dto/create-document.dto';
 import { GetUser } from '@/auth/decorators/get-user.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -49,11 +48,6 @@ export class DocumentsController {
   )
   async upload(@UploadedFile('file') file: Express.Multer.File, @GetUser('id') userId: string): Promise<Document> {
     return this.docsService.createFromFile(file, userId);
-  }
-
-  @Post('create')
-  async create(@Body() dto: CreateDocumentDto, @GetUser('id') userId: string): Promise<Document> {
-    return this.docsService.create(dto, userId);
   }
 
   @Delete(':id')

@@ -2,7 +2,6 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Document } from './document.entity';
-import { CreateDocumentDto } from '@/documents/dto/create-document.dto';
 import mammoth from 'mammoth';
 import pdf, { Result } from 'pdf-parse';
 import { IngestionService } from '@/ingestion/ingestion.service';
@@ -17,11 +16,6 @@ export class DocumentsService {
     private readonly chunkRepo: Repository<DocumentChunk>,
     private ingestionService: IngestionService,
   ) {}
-
-  async create(dto: CreateDocumentDto, userId: string): Promise<Document> {
-    const doc = this.docsRepo.create({ ...dto, userId });
-    return this.docsRepo.save(doc);
-  }
 
   async createFromFile(file: Express.Multer.File, userId: string): Promise<Document> {
     const name = file.originalname;
