@@ -1,0 +1,42 @@
+{
+  "family": "rag-app",
+  "networkMode": "bridge",
+  "requiresCompatibilities": [
+    "EC2"
+  ],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::${AWS_ACCOUNT_ID}:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "${BACKEND_IMAGE}",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 9001
+        }
+      ]
+    },
+    {
+      "name": "rag-backend",
+      "image": "${RAG_BACKEND_IMAGE}",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000
+        }
+      ]
+    },
+    {
+      "name": "frontend",
+      "image": "${FRONTEND_IMAGE}",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 3000
+        }
+      ]
+    }
+  ]
+}

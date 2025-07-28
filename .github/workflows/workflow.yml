@@ -1,0 +1,120 @@
+name: CI/CD with ECS on EC2 via GHCR
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+
+jobs:
+  test:
+    name: Build & Test Services
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [ backend, rag-backend, frontend ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js & npm
+        uses: actions/setup-node@v3
+        with:
+          node-version: 'node'
+
+      - name: Upgrade npm to latest
+        run: npm install -g npm@latest
+
+      - name: Install & Run Backend (NestJS) tests
+        working-directory: services/backend
+        run: |
+          npm install
+          npm test
+
+  build-and-deploy:
+    name: Build, Push to GHCR & Deploy to ECS
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 1. Log in to GHCR
+      - name: Login to GHCR
+        run: echo ${{ secrets.GITHUB_TOKEN }} \
+          | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      # 2. Build & push each service
+      - name: Build & Push Backend (NestJS)
+        run: |
+          IMG=ghcr.io/${{ github.repository_owner }}/${{ github.repository }}-backend:${{ github.sha }}
+          cd services/backend
+          docker build -t $IMG .
+          docker push $IMG
+          echo "BACKEND_IMAGE=$IMG" >> $GITHUB_ENV
+
+      - name: Build & Push RAG-Backend
+        run: |
+          IMG=ghcr.io/${{ github.repository_owner }}/${{ github.repository }}-rag-backend:${{ github.sha }}
+          cd services/rag-backend
+          docker build -t $IMG .
+          docker push $IMG
+          echo "RAG_BACKEND_IMAGE=$IMG" >> $GITHUB_ENV
+
+      - name: Build & Push Frontend
+        run: |
+          IMG=ghcr.io/${{ github.repository_owner }}/${{ github.repository }}-frontend:${{ github.sha }}
+          cd services/frontend
+          docker build -t $IMG .
+          docker push $IMG
+          echo "FRONTEND_IMAGE=$IMG" >> $GITHUB_ENV
+
+      # 3. Configure AWS for deployment
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # 4. Render the EC2 task definition with new image URIs
+      - name: Render Backend (NestJS) image in task definition
+        id: render-backend
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ecs/task-definition.json
+          container-name: backend
+          image: ${{ env.BACKEND_IMAGE }}
+
+      - name: Render RAG-Backend image in task definition
+        id: render-rag-backend
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-backend.outputs.task-definition }}
+          container-name: rag-backend
+          image: ${{ env.RAG_BACKEND_IMAGE }}
+
+      - name: Render Frontend image in task definition
+        id: render-frontend
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-rag-backend.outputs.task-definition }}
+          container-name: frontend
+          image: ${{ env.FRONTEND_IMAGE }}
+
+
+      # 5. Deploy updated task to your ECS service
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          cluster: your-ecs-cluster-name
+          service: your-ecs-service-name
+          task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+          wait-for-service-stability: true
