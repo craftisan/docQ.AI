@@ -8,6 +8,7 @@ from langchain_core.documents import Document
 
 from app.models.request_models import IngestRequest, QARequest, IngestChunksRequest
 from app.models.response_models import IngestResponse, QAResponse
+from app.services.qa_chain import make_qa_chain
 
 USE_LOCAL_EMBEDDINGS = os.getenv("USE_LOCAL_EMBEDDINGS", "false").lower() == "true"
 EMBEDDING_MODEL = os.getenv("HUGGINGFACE_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
@@ -51,6 +52,29 @@ def get_vectorstore():
 # -------------------------
 # Ingestion API
 # -------------------------
+
+async def ingest_document_chunks(request: IngestChunksRequest) -> IngestResponse:
+    # Build LangChain documents from your pre-chunked text:
+    docs = []
+    for chunk in request.chunks:
+        d = Document(
+            page_content=chunk,
+            metadata={
+                "document_name": request.document_name,
+                "uuid": request.document_uuid,
+            },
+        )
+        docs.append(d)
+
+    store = get_vectorstore()
+    store.add_documents(docs)
+
+    return IngestResponse(
+        status=True,
+        message=f"Document '{request.document_name}' ingested ({len(docs)} chunks)."
+    )
+
+# Not in use. TODO: remove
 async def ingest_document(request: IngestRequest) -> IngestResponse:
     # Split document into chunks
     splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
@@ -70,27 +94,6 @@ async def ingest_document(request: IngestRequest) -> IngestResponse:
     return IngestResponse(
         status=True,
         message=f"Document '{request.document_name}' ingested successfully."
-    )
-
-async def ingest_document_chunks(request: IngestChunksRequest) -> IngestResponse:
-    # Build LangChain documents from your pre-chunked text:
-    docs = []
-    for chunk in request.chunks:
-        d = Document(
-            page_content=chunk,
-            metadata={
-                "document_name": request.document_name,
-                "uuid":          request.document_uuid,
-            },
-        )
-        docs.append(d)
-
-    store = get_vectorstore()
-    store.add_documents(docs)
-
-    return IngestResponse(
-        status=True,
-        message=f"Document '{request.document_name}' ingested ({len(docs)} chunks)."
     )
 
 
@@ -120,7 +123,7 @@ async def answer_question(request: QARequest) -> QAResponse:
 
     generator = pipeline(
         "text2text-generation",
-        model="google/flan-t5-small",
+        model="google/flan-t5-base",
         device=-1  # CPU only
     )
 
@@ -128,12 +131,7 @@ async def answer_question(request: QARequest) -> QAResponse:
     llm = HuggingFacePipeline(pipeline=generator)
 
     # Create RetrievalQA chain
-    qa = RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=retriever,
-        return_source_documents=True
-    )
+    qa = make_qa_chain(llm, retriever)
 
     # Query
     result = qa.invoke(request.question)

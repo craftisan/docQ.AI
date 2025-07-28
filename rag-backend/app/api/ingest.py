@@ -12,6 +12,15 @@ router = APIRouter()
 SYNC_INGEST = os.getenv("SYNC_INGEST", "false").lower() == "true"
 
 
+@router.post("/chunks", response_model=IngestResponse)
+async def ingest_chunks(request: IngestChunksRequest) -> IngestResponse:
+    try :
+        return await ingest_document_chunks(request)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# Not in use. TODO: remove
 @router.post("", response_model=IngestResponse, status_code=status.HTTP_202_ACCEPTED)
 async def ingest_endpoint(background_tasks: BackgroundTasks, request: IngestRequest) -> IngestResponse:
     # Kick off ingestion in background.
@@ -26,13 +35,5 @@ async def ingest_endpoint(background_tasks: BackgroundTasks, request: IngestRequ
                 status=True,
                 message=f"Document '{request.document_name}' queued for ingestion successfully",
             )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.post("/chunks", response_model=IngestResponse)
-async def ingest_chunks(request: IngestChunksRequest) -> IngestResponse:
-    try :
-        return await ingest_document_chunks(request)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
