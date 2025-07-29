@@ -1,4 +1,3 @@
-// src/app/dashboard/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -10,21 +9,20 @@ import UploadButton from "@/components/document/UploadButton";
 import { Doc, getLatestIngestionJob } from "@/types/document/Doc";
 
 export default function DashboardPage() {
-  const { token, loading } = useAuth();
+  const { loading } = useAuth();
   const router = useRouter();
   const [docs, setDocs] = useState<Doc[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
     if (!loading) {
-      if (!token) return router.push("/");
-      Promise.all([listDocuments(token)])
-        .then(([docsRes]) => {
+      listDocuments()
+        .then((docsRes) => {
           setDocs(docsRes);
         })
         .finally(() => setLoadingData(false));
     }
-  }, [loading, token, router]);
+  }, [loading, router]);
 
   if (loadingData) return <p>Loading...</p>;
 

@@ -1,14 +1,11 @@
-// src/components/UploadButton.tsx
 "use client";
 
 import React, { ChangeEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/auth/AuthContext";
 import { uploadDocument } from "@/lib/api";
 import clsx from "clsx";
 
 export default function UploadButton() {
-  const { token } = useAuth();
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -19,14 +16,9 @@ export default function UploadButton() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!token) {
-      setError("You must be logged in to upload.");
-      return;
-    }
-
     setUploading(true);
     try {
-      const data = await uploadDocument(file, token);
+      const data = await uploadDocument(file);
       router.push(`/documents/${data.id}/qa`);
     } catch (err: unknown) {
       console.error(err);

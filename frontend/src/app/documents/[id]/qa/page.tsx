@@ -15,7 +15,7 @@ import { IngestionJob } from "@/types/ingestion/IngestionJob";
 
 export default function DocumentQAPage() {
   const { id } = useParams() as { id: string };
-  const { token, loading } = useAuth()
+  const { loading } = useAuth()
   const router = useRouter()
   const [document, setDocument] = useState<Doc | null>(null)
   const [question, setQuestion] = useState("")
@@ -33,10 +33,9 @@ export default function DocumentQAPage() {
 
   useEffect(() => {
     if (!loading) {
-      if (!token) return router.push("/");
       if (!id) return router.push("/dashboard");
 
-      getDocument(id, token)
+      getDocument(id)
         .then((res: Doc) => {
           setDocument(res);
         })
@@ -47,7 +46,7 @@ export default function DocumentQAPage() {
           setLoadingData(false);
         });
 
-      fetchDocumentChunks(id, page, perPage, token)
+      fetchDocumentChunks(id, page, perPage)
         .then((res: ChunkPage) => {
           setChunks(res.chunks.map((c) => c.text));
 
@@ -60,11 +59,10 @@ export default function DocumentQAPage() {
           setLoadingData(false);
         });
     }
-  }, [loading, token, id, router, page]);
+  }, [loading, id, router, page]);
 
   const handleAsk = async(e: React.FormEvent) => {
     e.preventDefault()
-    if (!token) return
     setLoadingQA(true)
     try {
       const res: QAResponse = await askQuestion(document!.id, question)
@@ -86,11 +84,11 @@ export default function DocumentQAPage() {
 
   const handleIngest = async(e: React.FormEvent) => {
     e.preventDefault()
-    if (!token || !document) return
+    if (!document) return
     setLoadingIngest(true);
     try {
       // Trigger ingestion API call
-      const res: IngestionJob = await triggerIngestion(document, token)
+      const res: IngestionJob = await triggerIngestion(document)
       setIngestResponse({ status: true, message: "Document ingested successfully!" })
       // Update document object with the new ingestion job
       document.ingestionJobs.push(res);
@@ -111,11 +109,11 @@ export default function DocumentQAPage() {
 
   const handleDelete = async(e: React.FormEvent) => {
     e.preventDefault()
-    if (!token || !document) return
+    if (!document) return
     setLoadingDelete(true);
     try {
       // Trigger ingestion API call
-      const deleted = await deleteDocument(document.id, token);
+      const deleted = await deleteDocument(document.id);
       if (deleted) {
         setDeleteResponse({ status: true, message: "Document deleted successfully!" })
         router.push("/dashboard");

@@ -1,7 +1,6 @@
-// src/app/ingestion/page.tsx
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/auth/AuthContext";
 import { getIngestionStatus, listDocuments, triggerBulkIngestion, triggerIngestion, } from "@/lib/api";
@@ -14,19 +13,18 @@ interface DocWithStatus extends Doc {
 }
 
 export default function IngestionPage() {
-  const { token, loading } = useAuth();
+  const { loading } = useAuth();
   const [docs, setDocs] = useState<DocWithStatus[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [triggering, setTriggering] = useState<Record<string, boolean>>({});
   const [bulkTriggering, setBulkTriggering] = useState(false);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
 
-  const fetchData = useCallback(async() => {
-    if (!token) return;
+  const fetchData = async() => {
     try {
       const [docList, jobs] = await Promise.all([
-        listDocuments(token),
-        getIngestionStatus(token),
+        listDocuments(),
+        getIngestionStatus(),
       ]);
       const enriched: DocWithStatus[] = docList.map((doc: Doc): DocWithStatus => {
         const related = jobs
@@ -55,21 +53,18 @@ export default function IngestionPage() {
     } catch {
       setError("Failed to load documents or ingestion status.");
     }
-  }, [token]);
+  }
 
   useEffect(() => {
     if (!loading) {
       void fetchData();
-      const iv = setInterval(fetchData, 5000);
-      return () => clearInterval(iv);
     }
-  }, [loading, fetchData]);
+  }, [loading]);
 
   const handleIngest = async(doc: Doc) => {
-    if (!token) return;
     setTriggering((t) => ({ ...t, [doc.id]: true }));
     try {
-      await triggerIngestion(doc, token);
+      await triggerIngestion(doc);
       await fetchData();
     } catch {
       setError("Failed to trigger ingestion.");
@@ -83,7 +78,6 @@ export default function IngestionPage() {
   };
 
   const handleBulkIngest = async() => {
-    if (!token) return;
     const docsToIngest = docs
       .filter((d) => selected[d.id] && d.latestStatus !== "done")
       .map((d) => d.id);
@@ -92,7 +86,7 @@ export default function IngestionPage() {
     setBulkTriggering(true);
     try {
       // one API call instead of looping
-      await triggerBulkIngestion(docsToIngest, token);
+      await triggerBulkIngestion(docsToIngest);
       await fetchData();
       setSelected({});
     } catch {

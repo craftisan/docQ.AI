@@ -9,31 +9,31 @@ import clsx from "clsx";
 import { ROLES } from "@/types/auth/Role";
 
 export default function UsersPage() {
-  const { token, user, loading } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading) {
-      if (!token || user?.role !== "admin") {
+      if (user?.role !== "admin") {
         router.push("/");
         return;
       }
       (async() => {
         try {
-          const data = await getUsers(token);
+          const data = await getUsers();
           setUsers(data);
         } catch {
           setError("Failed to fetch users");
         }
       })();
     }
-  }, [loading, token, user, router]);
+  }, [loading, user, router]);
 
   const handleRoleChange = async(id: string, newRole: string) => {
     try {
-      await updateUserRole(id, newRole, token!);
+      await updateUserRole(id, newRole);
       setUsers(users.map(u => u.id === id ? { ...u, role: newRole } : u));
     } catch {
       setError("Failed to update roles");
