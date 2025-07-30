@@ -11,7 +11,7 @@ import clsx from "clsx";
 import { TrashIcon } from "@heroicons/react/24/outline";
 import { IngestResponse } from "@/types/document/IngestResponse";
 import axios, { AxiosError } from "axios";
-import { IngestionJob } from "@/types/ingestion/IngestionJob";
+import { IngestionJob, IngestionStatus } from "@/types/ingestion/IngestionJob";
 
 export default function DocumentQAPage() {
   const { id } = useParams() as { id: string };
@@ -25,6 +25,7 @@ export default function DocumentQAPage() {
   const [loadingQA, setLoadingQA] = useState(false)
   const [loadingIngest, setLoadingIngest] = useState(false)
   const [loadingDelete, setLoadingDelete] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteResponse, setDeleteResponse] = useState<{ status: boolean, message: string } | null>(null)
   const [page, setPage] = useState(1);
   const perPage = 5;
@@ -116,9 +117,12 @@ export default function DocumentQAPage() {
       const deleted = await deleteDocument(document.id);
       if (deleted) {
         setDeleteResponse({ status: true, message: "Document deleted successfully!" })
+        // Wait 2 seconds so user can read the message
+        await new Promise(resolve => setTimeout(resolve, 2000));
         router.push("/dashboard");
+        return;
       }
-      setDeleteResponse({ status: true, message: "Could not delete document, please try again later." })
+      setDeleteResponse({ status: false, message: "Could not delete document, please try again." })
     } catch (err) {
       let message = "Could not delete document, please try again later.";
       if (axios.isAxiosError(err)) {
@@ -129,52 +133,57 @@ export default function DocumentQAPage() {
       }
       setDeleteResponse({ status: false, message: message });
     } finally {
+      await new Promise(resolve => setTimeout(resolve, 2000));
       setLoadingDelete(false);
+      setShowDeleteConfirm(false);
+      setDeleteResponse(null);
+
     }
   }
 
   const status = getLatestIngestionJob(document)?.status || "pending";
-  const disabledQA = loadingQA || status !== 'done';
-  const disabledIngest = loadingIngest || status === 'done';
+  const disabledQA = loadingQA || status !== 'done' || status === 'running' as IngestionStatus;
+  const disabledIngest = loadingIngest || status === 'done' || status === 'running';
 
   if (loadingData) return <p>Loading...</p>
 
   return (
-    <div className="h-full flex flex-col space-y-5 p-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <h1 className="text-2xl">{document?.name}</h1>
-          <IngestionStatusBadge status={status}/>
+    <>
+      <div className="h-full flex flex-col space-y-5 p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <h1 className="text-2xl">{document?.name}</h1>
+            <IngestionStatusBadge status={status}/>
+          </div>
+          <time className="text-sm">{document ? new Date(document.updatedAt).toLocaleString() : ''}</time>
         </div>
-        <time className="text-sm">{document ? new Date(document.updatedAt).toLocaleString() : ''}</time>
-      </div>
-      <div className="flex-1 overflow-y-auto bg-white rounded-lg shadow-lg">
-        <div className="sticky top-0 w-full p-4 flex justify-end items-center space-x-2 bg-white shadow-lg">
-          {!disabledIngest && (
-            <>
-              {ingestResponse && (
-                <span className={clsx("text-sm", {
-                  "text-red-500": !ingestResponse.status,
-                  "text-green-800": ingestResponse.status,
-                })}>
+        <div className="flex-1 overflow-y-auto bg-white rounded-lg shadow-lg">
+          <div className="sticky top-0 w-full p-4 flex justify-end items-center space-x-2 bg-white shadow-lg">
+            {!disabledIngest && (
+              <>
+                {ingestResponse && (
+                  <span className={clsx("text-sm", {
+                    "text-red-500": !ingestResponse.status,
+                    "text-green-800": ingestResponse.status,
+                  })}>
                   {ingestResponse.message}
                 </span>
-              )}
-              <button type="button"
-                      className="text-sm text-blue-800 rounded-lg border-2 border-blue-300 px-4 py-1 cursor-pointer hover:bg-blue-300 transition-colors duration-500"
-                      onClick={handleIngest}
-              >
-                {loadingIngest ? "Ingesting..." : "Ingest"}
-              </button>
-            </>
-          )}
-          <button type="button" className="text-sm text-red-500 rounded-lg px-2 py-1 cursor-pointer"
-                  onClick={handleDelete}
-          >
-            <TrashIcon className="h-5 w-5 hover:fill-red-200"/>
-          </button>
-        </div>
-        <pre className="whitespace-pre-wrap p-8">
+                )}
+                <button type="button"
+                        className="text-sm text-blue-800 rounded-lg border-2 border-blue-300 px-4 py-1 cursor-pointer hover:bg-blue-300 transition-colors duration-500"
+                        onClick={handleIngest}
+                >
+                  {loadingIngest ? "Ingesting..." : "Ingest"}
+                </button>
+              </>
+            )}
+            <button type="button" className="text-sm text-red-500 rounded-lg px-2 py-1 cursor-pointer"
+                    onClick={() => setShowDeleteConfirm(true)}
+            >
+              <TrashIcon className="h-5 w-5 hover:fill-red-200"/>
+            </button>
+          </div>
+          <pre className="whitespace-pre-wrap p-8">
           {chunks.map((text, i) => (
               <span key={i}>
                 {text}
@@ -182,79 +191,125 @@ export default function DocumentQAPage() {
             )
           )}
         </pre>
-        {/* pagination controls */}
-        <div className="sticky bottom-0 mt-4 flex justify-center items-center gap-4 bg-white p-4">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-            className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
-          >
-            Previous
-          </button>
+          {/* pagination controls */}
+          <div className="sticky bottom-0 mt-4 flex justify-center items-center gap-4 bg-white p-4">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+            >
+              Previous
+            </button>
 
-          <span>Page {page} of {totalPages}</span>
+            <span>Page {page} of {totalPages}</span>
 
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-            className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
-          >
-            Next
-          </button>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Answer */}
-      {qaResponse && (
-        <div className="bg-white p-4 rounded-lg shadow-lg overflow-y-auto max-h-1/2">
-          {!qaResponse.status && (
-            <p className="text-red-500">{qaResponse.error}</p>
-          )}
-          {qaResponse.status && (
-            <>
-              <h2 className="font-semibold">Answer</h2>
-              <p className="mt-2">{qaResponse.answer}</p>
-              {qaResponse.sources && qaResponse.sources.length > 0 && (
-                <div className="flex flex-col space-y-2 items-center justify-center">
-                  <h3 className="mt-4 font-semibold">Sources</h3>
-                  <ul className="list-disc list-inside mt-2">
-                    {qaResponse.sources.map((source, i) => (
-                      <li key={i}>
-                        <p className="text-sm text-gray-500">{source}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </>
-          )}
+        {/* Answer */}
+        {qaResponse && (
+          <div className="bg-white p-4 rounded-lg shadow-lg overflow-y-auto max-h-1/2">
+            {!qaResponse.status && (
+              <p className="text-red-500">{qaResponse.error}</p>
+            )}
+            {qaResponse.status && (
+              <>
+                <h2 className="font-semibold">Answer</h2>
+                <p className="mt-2">{qaResponse.answer}</p>
+                {qaResponse.sources && qaResponse.sources.length > 0 && (
+                  <div className="flex flex-col space-y-2 items-center justify-center">
+                    <h3 className="mt-4 font-semibold">Sources</h3>
+                    <ul className="list-disc list-inside mt-2">
+                      {qaResponse.sources.map((source, i) => (
+                        <li key={i}>
+                          <p className="text-sm text-gray-500">{source}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Ask Question Input */}
+        <form onSubmit={handleAsk} className="flex">
+          <input
+            type="text"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder={disabledQA ? "Ingestion " + status : "Ask a question..."}
+            className={clsx(
+              "flex-1 p-4 rounded-l-lg bg-white shadow-lg",
+              {
+                "cursor-not-allowed bg-gray-300!": disabledQA
+              }
+            )}
+            disabled={disabledQA}
+            required
+          />
+          <button
+            type="submit"
+            disabled={disabledQA}
+            className="bg-blue-500 text-white p-4 rounded-r-lg w-[10%]"
+          >
+            {loadingQA ? "Asking..." : "Ask"}
+          </button>
+        </form>
+      </div>
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent">
+          <div className="bg-white p-6 rounded shadow-md w-[90%] max-w-md">
+            <h2 className="text-lg font-semibold mb-4">Delete Document?</h2>
+            <p className={clsx(
+              "text-sm mb-6",
+              {
+                "text-gray-700": !deleteResponse,
+                "text-green-500": deleteResponse && deleteResponse.status,
+                "text-red-500": deleteResponse && !deleteResponse.status,
+              }
+            )}>
+              {deleteResponse ? deleteResponse.message : "Are you sure you want to delete this document? This action cannot be undone."}
+            </p>
+            <div className="flex justify-end space-x-4">
+              <button
+                className={clsx(
+                  "px-4 py-2 bg-gray-200 rounded hover:bg-gray-300",
+                  {
+                    "cursor-not-allowed": loadingDelete,
+                    "cursor-pointer": !loadingDelete,
+                  }
+                )}
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={loadingDelete}
+              >
+                Cancel
+              </button>
+              <button
+                className={clsx(
+                  "px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600",
+                  {
+                    "cursor-not-allowed": loadingDelete,
+                    "cursor-pointer": !loadingDelete,
+                  }
+                )}
+                onClick={handleDelete}
+                disabled={loadingDelete}
+              >
+                {loadingDelete ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
-
-      {/* Ask Question Input */}
-      <form onSubmit={handleAsk} className="flex">
-        <input
-          type="text"
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder={disabledQA ? "Ingestion " + status : "Ask a question..."}
-          className={clsx(
-            "flex-1 p-4 rounded-l-lg bg-white shadow-lg",
-            {
-              "cursor-not-allowed bg-gray-300!": disabledQA
-            }
-          )}
-          disabled={disabledQA}
-          required
-        />
-        <button
-          type="submit"
-          disabled={disabledQA}
-          className="bg-blue-500 text-white p-4 rounded-r-lg w-[10%]"
-        >
-          {loadingQA ? "Asking..." : "Ask"}
-        </button>
-      </form>
-    </div>
+    </>
   )
 }

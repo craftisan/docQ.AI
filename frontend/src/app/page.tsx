@@ -13,7 +13,7 @@ export default function HomePage() {
       {/* Left side */}
       <div className="w-1/2 bg-blue-600 flex flex-col items-center justify-center text-white p-8">
         <Image src="/file.svg" alt="App Logo" width={80} height={80} priority/>
-        <h1 className="text-4xl font-bold mt-4">RAG App</h1>
+        <h1 className="text-4xl font-bold mt-4">DocQ.ai</h1>
       </div>
 
       {/* Right side */}
